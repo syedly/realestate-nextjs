@@ -1,9 +1,11 @@
 import PropertyDetailClient from "@/components/PropertyDetailClient";
 
-export default function PropertyDetailPage({
+export default async function PropertyDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  return <PropertyDetailClient id={params.id} />;
+  const { id } = await params;
+  return <PropertyDetailClient id={id} />;
 }
+

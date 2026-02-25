@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useSaved, SavedProperty } from "@/lib/SavedContext";
+import { useUser, SignInButton } from "@clerk/nextjs";
 import {
   Bath,
   Bed,
@@ -13,6 +15,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Heart,
   Mail,
   MapPin,
   Maximize,
@@ -295,11 +298,40 @@ const DEFAULT_PROPERTY = PROPERTIES["seed_property_1"];
 export default function PropertyDetailClient({ id }: { id: string }) {
   const property = PROPERTIES[id] ?? { ...DEFAULT_PROPERTY, id };
   const [currentImage, setCurrentImage] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const { isSignedIn } = useUser();
+  const { isSaved, toggleSaved } = useSaved();
+  const liked = isSaved(property.id);
 
   const prevImage = () =>
     setCurrentImage((i) => (i === 0 ? property.images.length - 1 : i - 1));
   const nextImage = () =>
     setCurrentImage((i) => (i === property.images.length - 1 ? 0 : i + 1));
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleHeart = () => {
+    if (!isSignedIn) return;
+    const savedProp: SavedProperty = {
+      id: property.id,
+      title: property.title,
+      price: property.price,
+      address: property.address,
+      city: property.city,
+      type: property.type,
+      beds: property.beds,
+      baths: property.baths,
+      sqft: property.sqft,
+      image: property.images[0],
+    };
+    toggleSaved(savedProp);
+  };
 
   // Build static map URL using OpenStreetMap tile via a simple embed
   const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${property.lng - 0.05}%2C${property.lat - 0.03}%2C${property.lng + 0.05}%2C${property.lat + 0.03}&layer=mapnik&marker=${property.lat}%2C${property.lng}`;
@@ -358,24 +390,54 @@ export default function PropertyDetailClient({ id }: { id: string }) {
                 <button
                   key={i}
                   onClick={() => setCurrentImage(i)}
-                  className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-colors flex-shrink-0 ${
-                    currentImage === i ? "border-[#8B5E3C]" : "border-transparent"
-                  }`}
+                  className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-colors flex-shrink-0 ${currentImage === i ? "border-[#8B5E3C]" : "border-transparent"
+                    }`}
                 >
                   <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" />
                 </button>
               ))}
             </div>
 
-            {/* Price + Title */}
+            {/* Price + Title + Heart + Share */}
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h1 className="text-3xl font-bold text-stone-800 mb-1">{property.price}</h1>
                 <p className="text-stone-500 text-sm">{property.title}</p>
               </div>
-              <button className="w-9 h-9 rounded-full border border-stone-200 bg-white flex items-center justify-center hover:bg-stone-50 transition-colors">
-                <Share2 className="w-4 h-4 text-stone-500" />
-              </button>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2">
+                {/* Share button */}
+                <button
+                  onClick={handleShare}
+                  title={copied ? "Copied!" : "Copy link"}
+                  className="w-9 h-9 rounded-full border border-stone-200 bg-white flex items-center justify-center hover:bg-stone-50 transition-colors relative group"
+                >
+                  <Share2 className="w-4 h-4 text-stone-500" />
+                  {copied && (
+                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs bg-stone-800 text-white px-2 py-0.5 rounded-md whitespace-nowrap">
+                      Copied!
+                    </span>
+                  )}
+                </button>
+
+                {/* Heart button — only visible when signed in */}
+                {isSignedIn && (
+                  <button
+                    onClick={handleHeart}
+                    title={liked ? "Remove from saved" : "Save property"}
+                    className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all ${liked
+                        ? "border-[#8B5E3C] bg-[#8B5E3C]/10"
+                        : "border-stone-200 bg-white hover:bg-stone-50"
+                      }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 transition-colors ${liked ? "text-[#8B5E3C] fill-[#8B5E3C]" : "text-stone-500"
+                        }`}
+                    />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Address + Type badge */}
@@ -479,11 +541,20 @@ export default function PropertyDetailClient({ id }: { id: string }) {
                 </div>
               </div>
 
-              {/* CTA Button */}
-              <Button className="w-full bg-[#8B5E3C] hover:bg-[#7a5234] text-white text-xs h-9 gap-2">
-                <User className="w-3.5 h-3.5" />
-                Sign in to Contact
-              </Button>
+              {/* CTA Button — changes based on auth state */}
+              {isSignedIn ? (
+                <Button className="w-full bg-[#8B5E3C] hover:bg-[#7a5234] text-white text-xs h-9 gap-2">
+                  <User className="w-3.5 h-3.5" />
+                  Contact Agent
+                </Button>
+              ) : (
+                <SignInButton mode="modal">
+                  <Button className="w-full bg-[#8B5E3C] hover:bg-[#7a5234] text-white text-xs h-9 gap-2">
+                    <User className="w-3.5 h-3.5" />
+                    Sign in to Contact
+                  </Button>
+                </SignInButton>
+              )}
             </div>
           </div>
         </div>

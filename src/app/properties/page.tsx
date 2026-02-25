@@ -1,9 +1,11 @@
 import PropertiesPageClient from "@/components/PropertiesPageClient";
 
-export default function PropertiesPage({
+export default async function PropertiesPage({
   searchParams,
 }: {
-  searchParams: { city?: string; q?: string };
+  searchParams: Promise<{ city?: string; q?: string }>;
 }) {
-  return <PropertiesPageClient searchQuery={searchParams.city || searchParams.q || ""} />;
+  const { city, q } = await searchParams;
+  return <PropertiesPageClient searchQuery={city || q || ""} />;
 }
+
