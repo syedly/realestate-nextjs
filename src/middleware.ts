@@ -1,13 +1,8 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/profile(.*)", "/saved(.*)", "/dashboard(.*)"]);
-
-
-export default clerkMiddleware(async (auth, req) => {
-    if (isProtectedRoute(req)) {
-        await auth.protect();
-    }
-});
+// Make all routes public so pages like /dashboard and /saved
+// always render, without checking if the user is signed in.
+export default clerkMiddleware();
 
 export const config = {
     matcher: [
